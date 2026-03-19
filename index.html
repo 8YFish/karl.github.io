@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>晶石摆放最优解计算器</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Russo+One&family=Chakra+Petch:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #030712;
+            --panel-bg: rgba(17, 24, 39, 0.75);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --accent-color: #8b5cf6;
+            --secondary-accent: #3b82f6;
+            --red-glow: #ef4444;
+            --blue-glow: #3b82f6;
+            --yellow-glow: #f59e0b;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glow-intensity: 0.6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(square at 50% 50%, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 30px 30px;
+            color: #f3f4f6;
+            font-family: 'Chakra Petch', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        header {
+            width: 100%;
+            padding: 1rem 1rem;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, transparent 100%);
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-family: 'Russo One', sans-serif;
+            font-size: 2.2rem;
+            letter-spacing: 4px;
+            background: linear-gradient(to right, #fff, var(--accent-color), var(--secondary-accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.2));
+            margin-bottom: 0.2rem;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            color: #888;
+            font-weight: 300;
+            font-size: 0.8rem;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: 1fr auto;
+            gap: 1.5rem;
+            width: 98%;
+            max-width: 1600px;
+            padding: 1rem;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* 晶石面板样式压缩 */
+        .crystal-manager {
+            grid-column: 1 / span 2;
+            grid-row: 2;
+            background: var(--panel-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1rem;
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 1.5rem;
+            height: 360px;
+            flex-shrink: 0;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .manager-header {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-width: 150px;
+            border-right: 1px solid var(--border-color);
+            padding-right: 1.5rem;
+            height: 100%;
+            justify-content: center;
+        }
+
+        .crystal-list {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            grid-auto-rows: 60px;
+            gap: 12px;
+            overflow-y: auto;
+            max-height: 330px;
+            padding: 10px;
+            height: 100%;
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, var(--accent-color), var(--secondary-accent));
+            border: none;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-family: 'Russo One';
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.75rem;
+        }
+
+        .btn-add:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+        }
+
+        .crystal-item:hover {
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .crystal-item.red {
+            border-left: 3px solid var(--red-glow);
+        }
+
+        .crystal-item.blue {
+            border-left: 3px solid var(--blue-glow);
+        }
+
+        .crystal-item.yellow {
+            border-left: 3px solid var(--yellow-glow);
+        }
+
+        .crystal-item {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            transition: 0.2s;
+            overflow: hidden;
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-energy {
+            color: var(--accent-color);
+            font-family: 'Russo One';
+            font-size: 0.7rem;
+        }
+
+        .item-effect {
+            display: none;
+            /* 在主列表中隐藏详细描述，仅看标题即可 */
+        }
+
+        .btn-remove {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .btn-remove:hover {
+            color: #ff4d4d;
+        }
+
+        /* 中间：3x3 棋盘与控制 */
+        .board-container {
+            grid-column: 1;
+            grid-row: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .grid-3x3 {
+            display: grid;
+            grid-template-columns: repeat(3, 140px);
+            grid-template-rows: repeat(3, 140px);
+            gap: 20px;
+            padding: 30px;
+            background: linear-gradient(145deg, rgba(0, 0, 0, 0.4), rgba(255, 255, 255, 0.02));
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            position: relative;
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                inset 0 0 20px rgba(255, 255, 255, 0.02);
+            transform: perspective(1000px) rotateX(10deg);
+        }
+
+        .grid-cell {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .grid-cell.active {
+            border-style: solid;
+        }
+
+        .pulse-glow {
+            animation: pulseGlow 2s infinite ease-in-out !important;
+            border-color: var(--accent-color) !important;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+        }
+
+        @keyframes pulseGlow {
+            0% {
+                box-shadow: 0 0 10px rgba(139, 92, 246, 0.2);
+                transform: scale(1);
+            }
+
+            50% {
+                box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+                transform: scale(1.03);
+            }
+
+            100% {
+                box-shadow: 0 0 10px rgba(139, 92, 246, 0.2);
+                transform: scale(1);
+            }
+        }
+
+        .solver-controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-solve {
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #b621ff 0%, #21d4fd 100%);
+            border: none;
+            color: #fff;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(182, 33, 255, 0.3);
+            transition: 0.4s;
+        }
+
+        .btn-solve:hover {
+            transform: scale(1.05) translateY(-5px);
+            box-shadow: 0 20px 40px rgba(182, 33, 255, 0.5);
+        }
+
+        /* 右侧：结果面板 */
+        .result-panel {
+            grid-column: 2;
+            grid-row: 1;
+            background: var(--panel-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .result-header {
+            font-family: 'Russo One';
+            color: var(--accent-color);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .stat-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.2rem;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .stat-value {
+            font-family: 'Russo One';
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin-top: 5px;
+            background: linear-gradient(to right, #fff, var(--accent-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 能量连线 SVG 容器 */
+        #connectionLines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            overflow: visible;
+        }
+
+        .energy-line {
+            stroke: var(--accent-color);
+            stroke-width: 2;
+            stroke-linecap: round;
+            fill: none;
+            filter: drop-shadow(0 0 5px var(--accent-color));
+            opacity: 0.6;
+            stroke-dasharray: 200;
+            stroke-dashoffset: 200;
+            animation: drawLine 1s ease-out forwards;
+        }
+
+        @keyframes drawLine {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        /* 单元格明细弹窗 */
+        .cell-detail-popover {
+            position: absolute;
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid var(--accent-color);
+            border-radius: 12px;
+            padding: 1rem;
+            width: 220px;
+            z-index: 2000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(15px);
+            display: none;
+            pointer-events: none;
+            animation: popIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        .detail-row.total {
+            border-top: 1px solid var(--border-color);
+            padding-top: 8px;
+            margin-top: 8px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .btn-clear-board {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: #888;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-clear-board:hover {
+            border-color: #ff4c4c;
+            color: #ff4c4c;
+            background: rgba(255, 76, 76, 0.1);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+
+            html,
+            body {
+                width: 100%;
+                overflow-x: hidden !important;
+                height: auto !important;
+                min-height: 100vh;
+                display: block !important;
+                /* 回避 flex 居中导致的顶部裁剪 */
+            }
+
+            body {
+                overflow-y: auto !important;
+                background-attachment: scroll;
+            }
+
+            header {
+                padding: 1.5rem 0.5rem 0.5rem 0.5rem;
+                width: 100%;
+                text-align: center;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                letter-spacing: 1px;
+                width: 100%;
+                display: block;
+            }
+
+            main {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                width: 100% !important;
+                margin: 0;
+                padding: 10px 10px 80px 10px;
+                height: auto !important;
+                overflow: visible !important;
+                gap: 20px;
+            }
+
+            .board-container {
+                width: 100%;
+                padding: 0;
+                margin-bottom: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                order: 1;
+            }
+
+            .grid-3x3 {
+                gap: 8px;
+                padding: 10px;
+                transform: none !important;
+                grid-template-columns: repeat(3, 85px);
+                grid-template-rows: repeat(3, 85px);
+                width: fit-content;
+                margin: 0 auto;
+            }
+
+            .grid-cell {
+                width: 85px;
+                height: 85px;
+                border-radius: 12px;
+            }
+
+            .result-panel {
+                width: 100%;
+                margin-bottom: 20px;
+                height: auto;
+                padding: 1rem;
+                max-height: none;
+                order: 2;
+            }
+
+            .crystal-manager {
+                width: 100% !important;
+                height: auto !important;
+                min-height: 350px;
+                flex-direction: column;
+                padding: 1rem;
+                gap: 1rem;
+                margin-bottom: 30px;
+                order: 3;
+            }
+
+            .manager-header {
+                width: 100%;
+                min-width: unset;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 0 0 0.8rem 0;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                height: auto;
+            }
+
+            .crystal-list {
+                width: 100%;
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+                max-height: none;
+                padding: 5px 0;
+            }
+
+            .modal-content {
+                width: 95% !important;
+                padding: 1.2rem !important;
+                max-height: 85vh;
+            }
+        }
+
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #1a1f29;
+            width: 400px;
+            padding: 2rem;
+            border-radius: 20px;
+            border: 1px solid var(--accent-color);
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        input,
+        select {
+            background: #0b0e14;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent-color);
+        }
+
+        .color-options {
+            display: flex;
+            gap: 10px;
+        }
+
+        .color-radio {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #333;
+            border-radius: 8px;
+            transition: 0.3s;
+        }
+
+        .color-radio.red {
+            border-color: var(--red-glow);
+            color: var(--red-glow);
+        }
+
+        .color-radio.blue {
+            border-color: var(--blue-glow);
+            color: var(--blue-glow);
+        }
+
+        .color-radio.yellow {
+            border-color: var(--yellow-glow);
+            color: var(--yellow-glow);
+        }
+
+        .color-radio.selected {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+        }
+
+        /* 晶石图形展示 */
+        .crystal-icon {
+            width: 76px;
+            height: 76px;
+            border-radius: 24px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            transition: transform 0.3s;
+            z-index: 2;
+        }
+
+        .crystal-icon::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: inherit;
+            filter: blur(8px);
+            opacity: 0.6;
+            z-index: -1;
+            border-radius: inherit;
+        }
+
+        .icon-red {
+            background: linear-gradient(135deg, #ef4444, #991b1b);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+        }
+
+        .icon-blue {
+            background: linear-gradient(135deg, #3b82f6, #1e3a8a);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .icon-yellow {
+            background: linear-gradient(135deg, #f59e0b, #92400e);
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
+        }
+
+        .effect-arrow {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+        }
+
+        /* SVG 图标样式 */
+        .svg-icon {
+            width: 100%;
+            height: 100%;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* 评分显示 */
+        .score-breakdown {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: #666;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .loading-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+            border-radius: inherit;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 行列加成提示 */
+        .bonus-indicator {
+            position: absolute;
+            background: rgba(0, 255, 0, 0.2);
+            border: 2px solid #00ff00;
+            pointer-events: none;
+            animation: flash 2s infinite;
+        }
+
+        @keyframes flash {
+            0% {
+                opacity: 0.1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 0.1;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>晶石摆放优化器</h1>
+        <p class="subtitle">3x3 晶石摆放能量计算优化系统</p>
+    </header>
+
+    <main>
+
+        <!-- 中间：3x3 棋盘 -->
+        <section class="board-container">
+            <div id="solverBoard" class="grid-3x3">
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="spinner"></div>
+                    <span>计算中 (P(N, 9))...</span>
+                </div>
+                <!-- 能量连线画布 -->
+                <svg id="connectionLines"></svg>
+                <!-- 单元格明细 -->
+                <div id="cellDetail" class="cell-detail-popover"></div>
+                <!-- 9个格子 -->
+                <div class="grid-cell" data-idx="0"></div>
+                <div class="grid-cell" data-idx="1"></div>
+                <div class="grid-cell" data-idx="2"></div>
+                <div class="grid-cell" data-idx="3"></div>
+                <div class="grid-cell" data-idx="4"></div>
+                <div class="grid-cell" data-idx="5"></div>
+                <div class="grid-cell" data-idx="6"></div>
+                <div class="grid-cell" data-idx="7"></div>
+                <div class="grid-cell" data-idx="8"></div>
+            </div>
+
+            <div class="solver-controls">
+                <button class="btn-solve" onclick="runOptimization()">寻找最优解</button>
+            </div>
+        </section>
+
+        <!-- 右侧：结果面板 -->
+        <section class="result-panel">
+            <div class="result-header">最优方案数据</div>
+            <div class="stat-group">
+                <div class="stat-box" style="position: relative;">
+                    <div class="stat-label">总能量得分</div>
+                    <div id="totalEnergyVal" class="stat-value">0</div>
+                    <button class="btn-clear-board" onclick="clearBoard()"
+                        style="position: absolute; right: 10px; top: 10px;">清空</button>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">加成汇总</div>
+                    <div id="bonusSummary" style="font-size: 0.9rem; margin-top: 10px;">
+                        等待计算...
+                    </div>
+                </div>
+            </div>
+            <div id="scoreBreakdown" class="score-breakdown">
+                <!-- 详细得分 -->
+            </div>
+        </section>
+
+        <!-- 晶石管理 (移动端移至末尾) -->
+        <section class="crystal-manager">
+            <div class="manager-header">
+                <h3>我的晶石库</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-add" onclick="openAddModal()">添加</button>
+                    <button class="btn-add"
+                        style="background: linear-gradient(135deg, #ff4c4c 0%, #990000 100%); color: white;"
+                        onclick="clearCrystals()">清空</button>
+                </div>
+            </div>
+            <div id="crystalList" class="crystal-list">
+                <!-- 动态列表 -->
+            </div>
+        </section>
+    </main>
+
+    <!-- 添加晶石弹窗 -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <h3>新增晶石属性</h3>
+
+            <div class="form-group">
+                <label>颜色选择</label>
+                <div class="color-options">
+                    <div class="color-radio red" onclick="selectColor('red', this)">红色 (猩红)</div>
+                    <div class="color-radio blue" onclick="selectColor('blue', this)">蓝色 (幽蓝)</div>
+                    <div class="color-radio yellow" onclick="selectColor('yellow', this)">黄色 (琥珀)</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>自身显示能量 (即图片中的第一项“能量”数值)</label>
+                <input type="number" id="inputBaseEnergy" placeholder="如 440 或 552" value="440">
+            </div>
+
+            <div class="form-group">
+                <label>特殊/镶嵌属性 (对他人或自身的加成)</label>
+                <select id="inputType">
+                    <option value="None">无加成</option>
+                    <option value="Self">自身能量 (已包含在上面数值中则选"无")</option>
+                    <option value="Cross">周围宝石能量 (十字范围)</option>
+                    <option value="Up">上方宝石能量</option>
+                    <option value="Down">下方宝石能量</option>
+                    <option value="Left">左侧宝石能量</option>
+                    <option value="Right">右侧宝石能量</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>镶嵌加成数值</label>
+                <input type="number" id="inputValue" placeholder="如 27" value="27">
+            </div>
+
+            <div class="form-group" style="flex-direction: row; gap: 10px; margin-top: 10px;">
+                <button class="btn-add" style="flex: 1;" onclick="confirmAdd()">保存</button>
+                <button class="btn-add" style="flex: 1; background: #333;" onclick="closeAddModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 晶石系统核心逻辑
+         */
+
+        const ICON_SVGS = {
+            Self: `<svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+            Cross: `<svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+            Up: `<svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`,
+            Down: `<svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
+            Left: `<svg class="svg-icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+            Right: `<svg class="svg-icon" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
+            None: ``
+        };
+
+        class Crystal {
+            constructor(color, baseEnergy, effectType, effectValue) {
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.color = color; // 'red', 'blue', 'yellow'
+                this.baseEnergy = parseInt(baseEnergy) || 0;
+                this.effectType = effectType; // 'Self', 'Cross', 'Up', 'Down', 'Left', 'Right'
+                this.effectValue = parseInt(effectValue) || 0;
+            }
+
+            // 获取显示的名称
+            getName() {
+                const colors = { red: '猩红', blue: '幽蓝', yellow: '琥珀' };
+                const types = { None: '无', Self: '自身', Cross: '周围', Up: '上方', Down: '下方', Left: '左侧', Right: '右侧' };
+                return `${colors[this.color]}晶石 (${types[this.effectType]}+${this.effectValue})`;
+            }
+
+            // 给定自己的坐标 (r, c)，看是否能给目标坐标 (tr, tc) 提供加成
+            getContribution(r, c, tr, tc) {
+                if (this.effectType === 'None') return 0;
+                if (this.effectType === 'Self') {
+                    if (r === tr && c === tc) return this.effectValue;
+                } else if (this.effectType === 'Cross') {
+                    // 上下左右
+                    if ((Math.abs(r - tr) === 1 && c === tc) || (Math.abs(c - tc) === 1 && r === tr)) {
+                        return this.effectValue;
+                    }
+                } else if (this.effectType === 'Up' && tr === r - 1 && tc === c) {
+                    return this.effectValue;
+                } else if (this.effectType === 'Down' && tr === r + 1 && tc === c) {
+                    return this.effectValue;
+                } else if (this.effectType === 'Left' && tr === r && tc === c - 1) {
+                    return this.effectValue;
+                } else if (this.effectType === 'Right' && tr === r && tc === c + 1) {
+                    return this.effectValue;
+                }
+                return 0;
+            }
+        }
+
+        let myCrystals = [];
+
+        // 从 LocalStorage 加载
+        function loadCrystals() {
+            const saved = localStorage.getItem('crystal_optimizer_pool');
+            if (saved) {
+                const data = JSON.parse(saved);
+                myCrystals = data.map(d => new Crystal(d.color, d.baseEnergy, d.effectType, d.effectValue));
+            } else {
+                // 默认预设
+                myCrystals = [
+                    new Crystal('red', 552, 'Self', 112),
+                    new Crystal('blue', 440, 'Cross', 27),
+                    new Crystal('blue', 440, 'Cross', 27),
+                    new Crystal('blue', 440, 'Cross', 27),
+                    new Crystal('yellow', 440, 'Up', 80),
+                    new Crystal('yellow', 440, 'Up', 80)
+                ];
+                saveCrystals();
+            }
+        }
+
+        function saveCrystals() {
+            localStorage.setItem('crystal_optimizer_pool', JSON.stringify(myCrystals));
+        }
+
+        let selectedColor = 'red';
+        let currentEditId = null;
+
+        /**
+         * 界面交互
+         */
+
+        function renderCrystalList() {
+            const list = document.getElementById('crystalList');
+            list.innerHTML = '';
+            myCrystals.forEach(c => {
+                const div = document.createElement('div');
+                div.className = `crystal-item ${c.color}`;
+                div.innerHTML = `
+                    <div class="crystal-icon icon-${c.color}" style="width: 32px; height: 32px; margin-right: 8px; font-size: 14px; border-radius: 8px; flex-shrink: 0;">
+                        ${ICON_SVGS[c.effectType] || ''}
+                    </div>
+                    <div class="item-info">
+                        <span class="item-name">${c.getName()}</span>
+                        <span class="item-energy">能量: ${c.baseEnergy}</span>
+                    </div>
+                    <div style="margin-left: auto; display: flex; gap: 5px;">
+                        <button class="btn-remove" style="position:static; padding:2px 5px;" onclick="openAddModal('${c.id}')" title="编辑">✎</button>
+                        <button class="btn-remove" style="position:static; padding:2px 5px;" onclick="removeCrystal('${c.id}')" title="删除">✕</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function removeCrystal(id) {
+            myCrystals = myCrystals.filter(c => c.id !== id);
+            saveCrystals();
+            renderCrystalList();
+        }
+
+        function clearCrystals() {
+            if (confirm("确定要清空所有晶石吗？")) {
+                myCrystals = [];
+                saveCrystals();
+                renderCrystalList();
+            }
+        }
+
+        function openAddModal(editId = null) {
+            currentEditId = editId;
+            const modal = document.getElementById('addModal');
+            const title = modal.querySelector('h3');
+
+            if (editId) {
+                const c = myCrystals.find(x => x.id === editId);
+                if (c) {
+                    title.innerText = "编辑晶石属性";
+                    document.getElementById('inputBaseEnergy').value = c.baseEnergy;
+                    document.getElementById('inputType').value = c.effectType;
+                    document.getElementById('inputValue').value = c.effectValue;
+                    // 模拟选择颜色
+                    selectedColor = c.color;
+                    const colorBtn = modal.querySelector(`.color-radio.${c.color}`);
+                    selectColor(c.color, colorBtn);
+                }
+            } else {
+                title.innerText = "新增晶石属性";
+                // 默认值
+                document.getElementById('inputBaseEnergy').value = 440;
+                document.getElementById('inputType').value = "None";
+                document.getElementById('inputValue').value = 0;
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').style.display = 'none';
+            currentEditId = null;
+        }
+
+        function selectColor(color, el) {
+            selectedColor = color;
+            document.querySelectorAll('.color-radio').forEach(r => r.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function confirmAdd() {
+            const base = document.getElementById('inputBaseEnergy').value;
+            const type = document.getElementById('inputType').value;
+            const val = document.getElementById('inputValue').value;
+
+            if (currentEditId) {
+                // 编辑模式
+                const c = myCrystals.find(x => x.id === currentEditId);
+                if (c) {
+                    c.color = selectedColor;
+                    c.baseEnergy = parseInt(base) || 0;
+                    c.effectType = type;
+                    c.effectValue = parseInt(val) || 0;
+                }
+            } else {
+                // 新增模式
+                const newCrystal = new Crystal(selectedColor, base, type, val);
+                myCrystals.push(newCrystal);
+            }
+
+            saveCrystals();
+            renderCrystalList();
+            closeAddModal();
+        }
+
+        /**
+         * 计算与搜索
+         */
+
+        function calculateGridEnergy(arrangement) {
+            let grid = [
+                [arrangement[0], arrangement[1], arrangement[2]],
+                [arrangement[3], arrangement[4], arrangement[5]],
+                [arrangement[6], arrangement[7], arrangement[8]]
+            ];
+
+            // 存储每个格子的能量组成
+            let cellMeta = Array(9).fill(null).map(() => ({ base: 0, bonuses: [] }));
+
+            for (let tr = 0; tr < 3; tr++) {
+                for (let tc = 0; tc < 3; tc++) {
+                    const idx = tr * 3 + tc;
+                    const target = grid[tr][tc];
+                    if (!target) continue;
+
+                    cellMeta[idx].base = target.baseEnergy;
+                    for (let r = 0; r < 3; r++) {
+                        for (let c = 0; c < 3; c++) {
+                            const source = grid[r][c];
+                            if (!source) continue;
+                            const bonus = source.getContribution(r, c, tr, tc);
+                            if (bonus > 0) {
+                                cellMeta[idx].bonuses.push({ from: r * 3 + c, val: bonus });
+                            }
+                        }
+                    }
+                }
+            }
+
+            let formationBonuses = [];
+            for (let r = 0; r < 3; r++) {
+                const row = grid[r];
+                if (row[0] && row[1] && row[2] && row[0].color === row[1].color && row[1].color === row[2].color) {
+                    formationBonuses.push({ type: 'Row', idx: r });
+                }
+            }
+            for (let c = 0; c < 3; c++) {
+                if (grid[0][c] && grid[1][c] && grid[2][c] && grid[0][c].color === grid[1][c].color && grid[1][c].color === grid[2][c].color) {
+                    formationBonuses.push({ type: 'Col', idx: c });
+                }
+            }
+
+            let total = 0;
+            let finalCells = Array(9).fill(0);
+            for (let i = 0; i < 9; i++) {
+                if (!arrangement[i]) continue;
+                let energy = cellMeta[i].base + cellMeta[i].bonuses.reduce((s, b) => s + b.val, 0);
+
+                let formationMulti = 0;
+                const r = Math.floor(i / 3);
+                const c = i % 3;
+                formationBonuses.forEach(fb => {
+                    if ((fb.type === 'Row' && fb.idx === r) || (fb.type === 'Col' && fb.idx === c)) {
+                        formationMulti += 0.025;
+                    }
+                });
+
+                if (formationMulti > 0) {
+                    const bonusVal = Math.floor(energy * formationMulti);
+                    energy += bonusVal;
+                    cellMeta[i].bonuses.push({ from: -1, val: bonusVal, label: '阵型加成' });
+                }
+
+                finalCells[i] = energy;
+                total += energy;
+            }
+
+            return { total, cells: finalCells, cellMeta, arrangement };
+        }
+
+        function runOptimization() {
+            if (myCrystals.length === 0) {
+                alert("请先添加晶石库！");
+                return;
+            }
+
+            document.getElementById('loadingOverlay').style.display = 'flex';
+
+            // 使用异步计算，防止阻塞 UI
+            setTimeout(() => {
+                const startTime = performance.now();
+                const best = solveBruteForce();
+                const endTime = performance.now();
+
+                console.log(`计算耗时: ${endTime - startTime}ms`);
+                displayResult(best);
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }, 50);
+        }
+
+        function solveBruteForce() {
+            let n = myCrystals.length;
+            let bestTotal = -1;
+            let bestArrangement = null;
+            let bestMetaData = null;
+
+            const slots = 9;
+            const currentArrangement = Array(slots).fill(null);
+            const used = Array(n).fill(false);
+
+            function backtrack(slotIdx) {
+                if (slotIdx === slots) {
+                    const res = calculateGridEnergy(currentArrangement);
+                    if (res.total > bestTotal) {
+                        bestTotal = res.total;
+                        bestArrangement = [...currentArrangement];
+                        bestMetaData = res;
+                    }
+                    return;
+                }
+
+                // 尝试放当前格子的晶石（也可以留空，但为了最大化通常不留空，除非晶石不够）
+                let foundAny = false;
+                for (let i = 0; i < n; i++) {
+                    if (!used[i]) {
+                        used[i] = true;
+                        currentArrangement[slotIdx] = myCrystals[i];
+                        backtrack(slotIdx + 1);
+                        currentArrangement[slotIdx] = null;
+                        used[i] = false;
+                        foundAny = true;
+                    }
+                }
+
+                // 如果晶石不够 9 个，或者允许留空
+                if (!foundAny || n < slots) {
+                    currentArrangement[slotIdx] = null;
+                    backtrack(slotIdx + 1);
+                }
+            }
+
+            // 如果晶石太多，全排列会爆炸
+            // 简单剪枝：如果晶石超过 10 个，我们只取能量加贡献最高的前 10 个？
+            // 或者限制搜索层数。
+            // 这里我们尝试前 10 个（如果 N > 10）。
+            let pool = [...myCrystals];
+            if (pool.length > 10) {
+                // 启发式排序：(baseEnergy + inlay * factor)
+                pool.sort((a, b) => (b.baseEnergy + b.effectValue * 2) - (a.baseEnergy + a.effectValue * 2));
+                pool = pool.slice(0, 10);
+            }
+
+            // 重新定义回溯使用的 pool
+            const searchPool = pool;
+            const numPool = searchPool.length;
+            const poolUsed = Array(numPool).fill(false);
+
+            function backtrackFast(slotIdx) {
+                if (slotIdx === slots) {
+                    const res = calculateGridEnergy(currentArrangement);
+                    if (res.total > bestTotal) {
+                        bestTotal = res.total;
+                        bestArrangement = [...currentArrangement];
+                        bestMetaData = res;
+                    }
+                    return;
+                }
+
+                for (let i = 0; i < numPool; i++) {
+                    if (!poolUsed[i]) {
+                        poolUsed[i] = true;
+                        currentArrangement[slotIdx] = searchPool[i];
+                        backtrackFast(slotIdx + 1);
+                        poolUsed[i] = false;
+                    }
+                }
+                if (numPool < slots) {
+                    currentArrangement[slotIdx] = null;
+                    backtrackFast(slotIdx + 1);
+                }
+            }
+
+            backtrackFast(0);
+            return { arrangement: bestArrangement, meta: bestMetaData };
+        }
+
+        function clearBoard() {
+            const cells = document.querySelectorAll('.grid-cell');
+            cells.forEach(c => {
+                c.innerHTML = '';
+                c.className = 'grid-cell';
+                c.style.animation = 'none';
+                c.onclick = null;
+            });
+            document.getElementById('totalEnergyVal').innerText = '0';
+            document.getElementById('bonusSummary').innerText = '等待计算...';
+            document.getElementById('scoreBreakdown').innerHTML = '';
+            document.getElementById('connectionLines').innerHTML = '';
+        }
+
+        function displayResult(result) {
+            const { arrangement, meta } = result;
+            const cells = meta.cells;
+            const cellMeta = meta.cellMeta;
+            const total = meta.total;
+            const gridCells = document.querySelectorAll('.grid-cell');
+            const svg = document.getElementById('connectionLines');
+            svg.innerHTML = '';
+
+            let maxVal = Math.max(...cells);
+
+            arrangement.forEach((c, i) => {
+                const cell = gridCells[i];
+                cell.innerHTML = '';
+                cell.className = 'grid-cell';
+                cell.style.animation = 'none';
+                if (c) {
+                    cell.className = cells[i] === maxVal && maxVal > 0 ? 'grid-cell active pulse-glow' : 'grid-cell active';
+
+                    const icon = document.createElement('div');
+                    icon.className = `crystal-icon icon-${c.color}`;
+
+                    const arrow = document.createElement('div');
+                    arrow.className = 'effect-arrow';
+                    arrow.innerHTML = ICON_SVGS[c.effectType] || '';
+                    icon.appendChild(arrow);
+
+                    cell.appendChild(icon);
+
+                    const scoreLabel = document.createElement('div');
+                    scoreLabel.style.cssText = "position:absolute; bottom:8px; font-weight:bold; font-size:1rem; color: #fff; text-shadow: 0 0 10px rgba(0,0,0,0.5); font-family: 'Russo One';";
+                    scoreLabel.innerText = cells[i];
+                    cell.appendChild(scoreLabel);
+
+                    cell.onclick = (e) => showCellDetail(e, i, cellMeta[i], c);
+                }
+            });
+
+            document.getElementById('totalEnergyVal').innerText = total;
+            setTimeout(() => drawConnectionLines(cellMeta), 100);
+
+            const breakdown = document.getElementById('scoreBreakdown');
+            breakdown.innerHTML = '';
+            arrangement.forEach((c, i) => {
+                if (!c) return;
+                const row = document.createElement('div');
+                row.className = 'score-row';
+                row.innerHTML = `
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--${c.color}-glow, #8b5cf6);"></span>
+                        位置 ${i + 1} (${c.getName()})
+                    </span>
+                    <span style="font-family: 'Russo One'; color: var(--accent-color);">${cells[i]}</span>
+                `;
+                breakdown.appendChild(row);
+            });
+
+            // 更新阵型汇总
+            let bonusText = "";
+            let grid = [
+                [arrangement[0], arrangement[1], arrangement[2]],
+                [arrangement[3], arrangement[4], arrangement[5]],
+                [arrangement[6], arrangement[7], arrangement[8]]
+            ];
+            for (let i = 0; i < 3; i++) {
+                if (grid[i][0] && grid[i][1] && grid[i][2] && grid[i][0].color === grid[i][1].color && grid[i][1].color === grid[i][2].color) {
+                    bonusText += `<div class="bonus-tag">行 ${i + 1} 阵型有效 (+2.5%)</div>`;
+                }
+                if (grid[0][i] && grid[1][i] && grid[2][i] && grid[0][i].color === grid[1][i].color && grid[1][i].color === grid[2][i].color) {
+                    bonusText += `<div class="bonus-tag">列 ${i + 1} 阵型有效 (+2.5%)</div>`;
+                }
+            }
+            document.getElementById('bonusSummary').innerHTML = bonusText || '<div style="color: #666;">未激活任何阵型加成</div>';
+        }
+
+        function drawConnectionLines(cellMeta) {
+            const svg = document.getElementById('connectionLines');
+            const board = document.getElementById('solverBoard');
+            const rect = board.getBoundingClientRect();
+            const cells = document.querySelectorAll('.grid-cell');
+
+            cellMeta.forEach((meta, targetIdx) => {
+                meta.bonuses.forEach(b => {
+                    if (b.from === -1) return;
+
+                    const startEl = cells[b.from];
+                    const endEl = cells[targetIdx];
+                    if (!startEl || !endEl) return;
+
+                    const sRect = startEl.getBoundingClientRect();
+                    const eRect = endEl.getBoundingClientRect();
+
+                    const x1 = sRect.left - rect.left + sRect.width / 2;
+                    const y1 = sRect.top - rect.top + sRect.height / 2;
+                    const x2 = eRect.left - rect.left + eRect.width / 2;
+                    const y2 = eRect.top - rect.top + eRect.height / 2;
+
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", x1);
+                    line.setAttribute("y1", y1);
+                    line.setAttribute("x2", x2);
+                    line.setAttribute("y2", y2);
+                    line.setAttribute("class", "energy-line");
+                    svg.appendChild(line);
+                });
+            });
+        }
+
+        function showCellDetail(e, idx, meta, crystal) {
+            const popover = document.getElementById('cellDetail');
+            popover.innerHTML = `
+                <div style="font-weight:bold; color:var(--accent-color); margin-bottom:10px;">位置 ${idx + 1} [${crystal.getName()}]</div>
+                <div class="detail-row"><span>基础能量</span><span>${meta.base}</span></div>
+                ${meta.bonuses.map(b => `
+                    <div class="detail-row">
+                        <span>${b.from === -1 ? (b.label || '阵型加成') : '来自位置 ' + (b.from + 1)}</span>
+                        <span style="color:#4ade80;">+${b.val}</span>
+                    </div>
+                `).join('')}
+                <div class="detail-row total"><span>最终能量</span><span>${meta.base + meta.bonuses.reduce((s, x) => s + x.val, 0)}</span></div>
+            `;
+
+            const board = document.getElementById('solverBoard').getBoundingClientRect();
+            popover.style.display = 'block';
+            popover.style.left = (e.clientX - board.left + 10) + 'px';
+            popover.style.top = (e.clientY - board.top + 10) + 'px';
+
+            const closeHandler = () => {
+                popover.style.display = 'none';
+                document.removeEventListener('click', closeHandler);
+            };
+            setTimeout(() => document.addEventListener('click', closeHandler), 10);
+            e.stopPropagation();
+        }
+
+        // 初始化
+        selectColor('red', document.querySelector('.color-radio.red'));
+        loadCrystals();
+        renderCrystalList();
+
+    </script>
+</body>
+
+</html>
+```
